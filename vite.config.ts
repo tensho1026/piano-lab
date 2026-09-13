@@ -5,7 +5,7 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   build: {
-    // 初見演奏の遅延読み込みチャンクには楽譜フォント（Bravura）が埋め込まれるため大きい。
-    chunkSizeWarningLimit: 800,
+    // 楽譜フォント（Bravura）を初見演奏と同じ本体に含めるため、チャンク警告のしきい値を上げる。
+    chunkSizeWarningLimit: 1200,
   },
 })
