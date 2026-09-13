@@ -1,7 +1,8 @@
 import { NOTE_NAMES, WHITE_NOTE_NAMES, fromMidi, toMidi } from './notes'
+import { chordChoices, chordNotes, chordPoolFor } from './chords'
 import { intervalPoolFor, transposeBy } from './intervals'
 import { buildChoices, createId, pickRandom, randomInt } from '../utils/random'
-import type { Difficulty, IntervalQuestion, PitchQuestion } from '../types/game'
+import type { ChordQuestion, Difficulty, IntervalQuestion, PitchQuestion } from '../types/game'
 import type { NoteName } from '../types/music'
 
 /** 絶対音感ゲームで使う音名の候補。 */
@@ -43,5 +44,19 @@ export function createIntervalQuestion(difficulty: Difficulty): IntervalQuestion
       interval.name,
       pool.map((candidate) => candidate.name),
     ),
+  }
+}
+
+/**
+ * コード当てゲームの問題。ルート音は 3 オクターブ目から積み上げる。
+ */
+export function createChordQuestion(difficulty: Difficulty): ChordQuestion {
+  const pool = chordPoolFor(difficulty)
+  const answer = pickRandom(pool)
+  return {
+    id: createId(),
+    answer,
+    notes: chordNotes(answer),
+    choices: chordChoices(answer, pool),
   }
 }
