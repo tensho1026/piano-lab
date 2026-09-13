@@ -143,6 +143,8 @@ export class PianoService implements PianoAudio {
   #progress: PianoLoadProgress = { loaded: 0, total: 0 }
   #listeners = new Set<Listener>()
   #loading: Promise<void> | null = null
+  /** start() が返す停止関数。予約済みの未来の発音もまとめてキャンセルする。 */
+  #stops = new Set<() => void>()
 
   constructor(context: AudioContext = getAudioContext()) {
     this.#context = context
@@ -208,13 +210,14 @@ export class PianoService implements PianoAudio {
   playNote(note: string, options: PlayOptions = {}): void {
     void this.unlock()
     if (this.#piano) {
-      this.#piano.start({
+      const stop = this.#piano.start({
         note,
         stopId: note,
         time: this.#context.currentTime + (options.delay ?? 0),
         duration: options.duration,
         velocity: options.velocity,
       })
+      this.#stops.add(stop)
       return
     }
     this.#fallback?.start(note, options)
@@ -235,9 +238,12 @@ export class PianoService implements PianoAudio {
   }
 
   stopAll(): void {
+    for (const stop of this.#stops) stop()
+    this.#stops.clear()
     if (this.#piano) {
+      // 鳴っている声に加え、まだ始まっていない予約ノートも取り消す。
+      this.#piano.scheduler.stop()
       this.#piano.stop()
-      return
     }
     this.#fallback?.stopAll()
   }
