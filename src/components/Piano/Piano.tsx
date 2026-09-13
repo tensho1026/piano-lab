@@ -18,7 +18,10 @@ export type PianoProps = {
   disabled?: boolean
   /** PC キーボードでの演奏を有効にするか。 */
   keyboardEnabled?: boolean
+  /** 白鍵に PC キーボードの割り当てを表示するか。 */
   showKeyLabels?: boolean
+  /** 白鍵に音名を表示するか（初見演奏では答えになるので隠す）。 */
+  showNoteNames?: boolean
 }
 
 export function Piano({
@@ -32,6 +35,7 @@ export function Piano({
   disabled = false,
   keyboardEnabled = true,
   showKeyLabels = true,
+  showNoteNames = true,
 }: PianoProps) {
   const { audio, unlock } = usePiano()
   const keys = useMemo(() => buildPianoKeys(from, to), [from, to])
@@ -134,7 +138,7 @@ export function Piano({
                         {NOTE_TO_KEY_LABEL[key.note]}
                       </span>
                     ) : null}
-                    <span>{key.note}</span>
+                    {showNoteNames ? <span>{key.note}</span> : null}
                   </span>
                 </button>
               )

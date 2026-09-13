@@ -9,8 +9,9 @@ import type {
   Difficulty,
   IntervalQuestion,
   PitchQuestion,
+  SightReadingQuestion,
 } from '../types/game'
-import type { NoteName } from '../types/music'
+import type { ClefName, NoteName } from '../types/music'
 
 /** 絶対音感ゲームで使う音名の候補。 */
 export function pitchPoolFor(difficulty: Difficulty): readonly NoteName[] {
@@ -93,4 +94,46 @@ export function createChordEarQuestion(difficulty: Difficulty): ChordEarQuestion
 
   const notes = sortNotes(sampleUnique(candidates, noteCount))
   return { id: createId(), answer: notes, notes }
+}
+
+/** 初見演奏トレーナーの 1 問あたりの音数。 */
+export const SIGHT_READING_NOTE_COUNTS: Record<Difficulty, number> = {
+  easy: 1,
+  normal: 4,
+  hard: 8,
+}
+
+function sightReadingCandidates(difficulty: Difficulty, clef: ClefName): string[] {
+  const [from, to] =
+    difficulty === 'easy'
+      ? (['C4', 'C5'] as const)
+      : clef === 'bass'
+        ? (['C3', 'C4'] as const)
+        : (['C4', 'C6'] as const)
+
+  const candidates: string[] = []
+  for (let midi = toMidi(from); midi <= toMidi(to); midi += 1) {
+    const note = fromMidi(midi)
+    if (difficulty === 'easy' && note.includes('#')) continue
+    candidates.push(note)
+  }
+  return candidates
+}
+
+/**
+ * 初見演奏トレーナーの問題。同じ音が続かないように並べる。
+ */
+export function createSightReadingQuestion(difficulty: Difficulty): SightReadingQuestion {
+  const clef: ClefName = difficulty === 'hard' && Math.random() < 0.5 ? 'bass' : 'treble'
+  const candidates = sightReadingCandidates(difficulty, clef)
+  const noteCount = SIGHT_READING_NOTE_COUNTS[difficulty]
+
+  const notes: string[] = []
+  while (notes.length < noteCount) {
+    const note = pickRandom(candidates)
+    if (note === notes.at(-1)) continue
+    notes.push(note)
+  }
+
+  return { id: createId(), answer: notes, notes, clef }
 }
