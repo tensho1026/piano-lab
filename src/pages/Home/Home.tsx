@@ -7,7 +7,7 @@ export function Home() {
   return (
     <div className="min-h-dvh bg-slate-950 text-slate-100">
       <div className="mx-auto max-w-5xl px-4 py-10 sm:py-16">
-        <header className="flex flex-col gap-4">
+        <header className="flex flex-col items-start gap-4">
           <AudioStatus />
           <h1 className="text-3xl font-bold tracking-tight sm:text-5xl">Piano Trainer</h1>
           <p className="text-slate-400 sm:text-lg">耳と演奏を鍛えるピアノトレーニング</p>
