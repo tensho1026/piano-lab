@@ -4,6 +4,7 @@ import { ChordQuiz } from '../pages/ChordQuiz/ChordQuiz'
 import { Home } from '../pages/Home/Home'
 import { IntervalQuiz } from '../pages/IntervalQuiz/IntervalQuiz'
 import { PerfectPitch } from '../pages/PerfectPitch/PerfectPitch'
+import { Progression } from '../pages/Progression/Progression'
 
 export const router = createBrowserRouter([
   { path: '/', element: <Home /> },
@@ -11,4 +12,5 @@ export const router = createBrowserRouter([
   { path: '/interval-quiz', element: <IntervalQuiz /> },
   { path: '/chord-quiz', element: <ChordQuiz /> },
   { path: '/chord-ear', element: <ChordEar /> },
+  { path: '/progression', element: <Progression /> },
 ])
