@@ -1,8 +1,15 @@
 import { NOTE_NAMES, WHITE_NOTE_NAMES, fromMidi, toMidi } from './notes'
 import { chordChoices, chordNotes, chordPoolFor } from './chords'
 import { intervalPoolFor, transposeBy } from './intervals'
-import { buildChoices, createId, pickRandom, randomInt } from '../utils/random'
-import type { ChordQuestion, Difficulty, IntervalQuestion, PitchQuestion } from '../types/game'
+import { buildChoices, createId, pickRandom, randomInt, sampleUnique } from '../utils/random'
+import { sortNotes } from '../utils/compareNotes'
+import type {
+  ChordEarQuestion,
+  ChordQuestion,
+  Difficulty,
+  IntervalQuestion,
+  PitchQuestion,
+} from '../types/game'
 import type { NoteName } from '../types/music'
 
 /** 絶対音感ゲームで使う音名の候補。 */
@@ -59,4 +66,31 @@ export function createChordQuestion(difficulty: Difficulty): ChordQuestion {
     notes: chordNotes(answer),
     choices: chordChoices(answer, pool),
   }
+}
+
+/** 和音耳コピゲームの音数と出題範囲。 */
+export const CHORD_EAR_SETTINGS: Record<
+  Difficulty,
+  { noteCount: number; from: string; to: string; whiteKeysOnly: boolean }
+> = {
+  easy: { noteCount: 2, from: 'C4', to: 'C5', whiteKeysOnly: true },
+  normal: { noteCount: 3, from: 'C4', to: 'C6', whiteKeysOnly: true },
+  hard: { noteCount: 4, from: 'C3', to: 'C6', whiteKeysOnly: false },
+}
+
+/**
+ * 和音耳コピゲームの問題。判定は順番を無視するため、
+ * 出題側も低い音から順に並べておく。
+ */
+export function createChordEarQuestion(difficulty: Difficulty): ChordEarQuestion {
+  const { noteCount, from, to, whiteKeysOnly } = CHORD_EAR_SETTINGS[difficulty]
+  const candidates: string[] = []
+  for (let midi = toMidi(from); midi <= toMidi(to); midi += 1) {
+    const note = fromMidi(midi)
+    if (whiteKeysOnly && note.includes('#')) continue
+    candidates.push(note)
+  }
+
+  const notes = sortNotes(sampleUnique(candidates, noteCount))
+  return { id: createId(), answer: notes, notes }
 }
