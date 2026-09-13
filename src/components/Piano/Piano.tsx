@@ -24,6 +24,9 @@ export type PianoProps = {
   showNoteNames?: boolean
 }
 
+/** ハイライトを最低これだけ表示する（ミリ秒）。 */
+const MIN_HIGHLIGHT_MS = 160
+
 export function Piano({
   from = KEYBOARD_LOWEST,
   to = KEYBOARD_HIGHEST,
@@ -42,34 +45,67 @@ export function Piano({
   const whiteCount = useMemo(() => keys.filter((key) => !key.isBlack).length, [keys])
 
   const [pressed, setPressed] = useState<readonly string[]>([])
-  const pressedRef = useRef<Set<string>>(new Set())
+  /** 発音中の鍵盤と、その押下開始時刻。 */
+  const pressedRef = useRef<Map<string, number>>(new Map())
+  /** ハイライト表示中の鍵盤。短い打鍵でも見えるよう発音より長く残る。 */
+  const highlightedRef = useRef<Set<string>>(new Set())
+  const fadeTimersRef = useRef<Map<string, number>>(new Map())
   const pointerActive = useRef(false)
+
+  const syncHighlight = useCallback(() => {
+    setPressed([...highlightedRef.current])
+  }, [])
 
   const press = useCallback(
     (note: PianoNote) => {
       if (disabled || pressedRef.current.has(note)) return
-      pressedRef.current.add(note)
-      setPressed([...pressedRef.current])
+      pressedRef.current.set(note, performance.now())
+
+      const fadeTimer = fadeTimersRef.current.get(note)
+      if (fadeTimer !== undefined) {
+        window.clearTimeout(fadeTimer)
+        fadeTimersRef.current.delete(note)
+      }
+      highlightedRef.current.add(note)
+      syncHighlight()
+
       unlock()
       if (playSound) audio.playNote(note)
       onNoteOn?.(note)
     },
-    [audio, disabled, onNoteOn, playSound, unlock],
+    [audio, disabled, onNoteOn, playSound, syncHighlight, unlock],
   )
 
   const release = useCallback(
     (note: PianoNote) => {
-      if (!pressedRef.current.has(note)) return
+      const pressedAt = pressedRef.current.get(note)
+      if (pressedAt === undefined) return
       pressedRef.current.delete(note)
-      setPressed([...pressedRef.current])
       if (playSound) audio.stopNote(note)
       onNoteOff?.(note)
+
+      // キーを叩くように一瞬押しただけでもハイライトが見えるようにする。
+      const remaining = MIN_HIGHLIGHT_MS - (performance.now() - pressedAt)
+      if (remaining <= 0) {
+        highlightedRef.current.delete(note)
+        syncHighlight()
+        return
+      }
+      fadeTimersRef.current.set(
+        note,
+        window.setTimeout(() => {
+          fadeTimersRef.current.delete(note)
+          if (pressedRef.current.has(note)) return
+          highlightedRef.current.delete(note)
+          syncHighlight()
+        }, remaining),
+      )
     },
-    [audio, onNoteOff, playSound],
+    [audio, onNoteOff, playSound, syncHighlight],
   )
 
   const releaseAll = useCallback(() => {
-    for (const note of [...pressedRef.current]) release(note as PianoNote)
+    for (const note of [...pressedRef.current.keys()]) release(note as PianoNote)
   }, [release])
 
   useKeyboardPiano({ onNoteOn: press, onNoteOff: release, enabled: keyboardEnabled && !disabled })
@@ -86,6 +122,14 @@ export function Piano({
       window.removeEventListener('pointercancel', handleUp)
     }
   }, [releaseAll])
+
+  useEffect(() => {
+    const fadeTimers = fadeTimersRef.current
+    return () => {
+      for (const timer of fadeTimers.values()) window.clearTimeout(timer)
+      fadeTimers.clear()
+    }
+  }, [])
 
   const whiteWidth = 100 / whiteCount
   const blackWidth = whiteWidth * 0.62
