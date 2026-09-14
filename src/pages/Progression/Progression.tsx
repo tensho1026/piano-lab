@@ -94,7 +94,7 @@ export function Progression() {
       description="Key のダイアトニックコードを並べて、1 コード 4 拍で再生します。"
     >
       <div className="flex flex-col gap-6">
-        <ProgressionHelp />
+        <ProgressionHelp tonic={tonic} mode={mode} />
 
         <section className="flex flex-col gap-4 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 sm:p-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-8">
@@ -150,6 +150,7 @@ export function Progression() {
                 >
                   <span className="font-semibold">{chord.symbol}</span>
                   <span className="text-[10px] text-slate-400">{chord.grade}</span>
+                  <span className="font-mono text-[10px] text-slate-500">{chord.notes.join(' ')}</span>
                 </button>
               ))}
             </div>

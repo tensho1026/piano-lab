@@ -1,7 +1,7 @@
 import { NOTE_NAMES, WHITE_NOTE_NAMES, fromMidi, toMidi } from './notes'
-import { chordChoices, chordNotes, chordPoolFor } from './chords'
+import { chordChoices, chordNotes, chordPoolFor, createVoicedChordEar } from './chords'
 import { intervalPoolFor, transposeBy } from './intervals'
-import { buildChoices, createId, pickRandom, randomInt, sampleUnique } from '../utils/random'
+import { buildChoices, createId, pickRandom, randomInt } from '../utils/random'
 import { sortNotes } from '../utils/compareNotes'
 import type {
   ChordEarQuestion,
@@ -69,31 +69,28 @@ export function createChordQuestion(difficulty: Difficulty): ChordQuestion {
   }
 }
 
-/** 和音耳コピゲームの音数と出題範囲。 */
-export const CHORD_EAR_SETTINGS: Record<
-  Difficulty,
-  { noteCount: number; from: string; to: string; whiteKeysOnly: boolean }
-> = {
-  easy: { noteCount: 2, from: 'C4', to: 'C5', whiteKeysOnly: true },
-  normal: { noteCount: 3, from: 'C4', to: 'C6', whiteKeysOnly: true },
-  hard: { noteCount: 4, from: 'C3', to: 'C6', whiteKeysOnly: false },
+/** 和音耳コピゲームの出題範囲。種類は chordEarKindsFor を参照。 */
+export const CHORD_EAR_SETTINGS: Record<Difficulty, { from: string; to: string }> = {
+  easy: { from: 'C3', to: 'C5' },
+  normal: { from: 'C3', to: 'C6' },
+  hard: { from: 'C3', to: 'C6' },
 }
 
 /**
- * 和音耳コピゲームの問題。判定は順番を無視するため、
- * 出題側も低い音から順に並べておく。
+ * 和音耳コピゲームの問題。実際のコード種類から構成音を作る。
+ * 判定は順番を無視するため、出題側も低い音から順に並べておく。
  */
 export function createChordEarQuestion(difficulty: Difficulty): ChordEarQuestion {
-  const { noteCount, from, to, whiteKeysOnly } = CHORD_EAR_SETTINGS[difficulty]
-  const candidates: string[] = []
-  for (let midi = toMidi(from); midi <= toMidi(to); midi += 1) {
-    const note = fromMidi(midi)
-    if (whiteKeysOnly && note.includes('#')) continue
-    candidates.push(note)
+  const { from, to } = CHORD_EAR_SETTINGS[difficulty]
+  const voiced = createVoicedChordEar(difficulty, from, to)
+  const notes = sortNotes(voiced.notes)
+  return {
+    id: createId(),
+    answer: notes,
+    notes,
+    chordSymbol: voiced.symbol,
+    chordKind: voiced.kind,
   }
-
-  const notes = sortNotes(sampleUnique(candidates, noteCount))
-  return { id: createId(), answer: notes, notes }
 }
 
 /** 初見演奏トレーナーの 1 問あたりの音数。 */

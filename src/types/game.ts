@@ -25,6 +25,10 @@ export type PitchQuestion = Question<string> & {
 
 export type ChordEarQuestion = Question<string[]> & {
   notes: string[]
+  /** 出題したコードの表示名（例: "Cmaj7"）。 */
+  chordSymbol: string
+  /** 和音の種類の説明（例: "メジャーセブンス"）。 */
+  chordKind: string
 }
 
 export type SightReadingQuestion = Question<string[]> & {
