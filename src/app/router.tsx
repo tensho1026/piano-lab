@@ -7,6 +7,8 @@ import { Home } from '../pages/Home/Home'
 import { IntervalQuiz } from '../pages/IntervalQuiz/IntervalQuiz'
 import { PerfectPitch } from '../pages/PerfectPitch/PerfectPitch'
 import { Progression } from '../pages/Progression/Progression'
+import { ProgressionEar } from '../pages/ProgressionEar/ProgressionEar'
+import { RelativePitch } from '../pages/RelativePitch/RelativePitch'
 import { SightReading } from '../pages/SightReading/SightReading'
 
 export const router = createBrowserRouter([
@@ -20,7 +22,9 @@ export const router = createBrowserRouter([
       { path: '/interval-quiz', element: <IntervalQuiz /> },
       { path: '/perfect-pitch', element: <PerfectPitch /> },
       { path: '/chord-ear', element: <ChordEar /> },
+      { path: '/relative-pitch', element: <RelativePitch /> },
       { path: '/progression', element: <Progression /> },
+      { path: '/progression-ear', element: <ProgressionEar /> },
     ],
   },
 ])

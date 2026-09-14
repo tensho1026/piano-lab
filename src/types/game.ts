@@ -29,9 +29,35 @@ export type ChordEarQuestion = Question<string[]> & {
   chordSymbol: string
   /** 和音の種類の説明（例: "メジャーセブンス"）。 */
   chordKind: string
+  suffix: string
 }
+
+export type RhythmDuration = 'q' | '8'
+
+export type SightReadingEvent =
+  | { kind: 'note'; pitch: string; duration: RhythmDuration }
+  | { kind: 'rest'; duration: RhythmDuration }
 
 export type SightReadingQuestion = Question<string[]> & {
   notes: string[]
+  events: SightReadingEvent[]
   clef: 'treble' | 'bass'
+}
+
+export type RelativePitchQuestion = Question<number> & {
+  tonic: string
+  mode: 'major' | 'minor'
+  degree: number
+  tonicNote: string
+  note: string
+  choices: number[]
+}
+
+export type ProgressionEarQuestion = Question<string[]> & {
+  tonic: string
+  mode: 'major' | 'minor'
+  grades: string[]
+  symbols: string[]
+  presetName: string
+  availableGrades: string[]
 }

@@ -6,6 +6,7 @@ import { KEY_TONICS, diatonicTriads } from '../../music/keys'
 import type { KeyMode } from '../../music/keys'
 import { createId } from '../../utils/random'
 import { ProgressionHelp } from './ProgressionHelp'
+import { PROGRESSION_PRESETS, resolvePreset } from '../../music/progressions'
 
 type ProgressionItem = { id: string; symbol: string }
 
@@ -66,6 +67,14 @@ export function Progression() {
       ),
     )
   }, [audio, bpm, clearTimers, items])
+
+  const applyPreset = (presetId: string) => {
+    const preset = PROGRESSION_PRESETS.find((candidate) => candidate.id === presetId)
+    if (!preset) return
+    if (preset.mode !== mode) setMode(preset.mode)
+    const resolved = resolvePreset(preset, tonic)
+    setItems(resolved.symbols.map((symbol) => ({ id: createId(), symbol })))
+  }
 
   const addChord = (symbol: string) => {
     setItems((current) => [...current, { id: createId(), symbol }])
@@ -136,6 +145,23 @@ export function Progression() {
                 className="w-full accent-indigo-400"
               />
             </label>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <p className="text-sm text-slate-400">定番進行</p>
+            <div className="flex flex-wrap gap-2">
+              {PROGRESSION_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => applyPreset(preset.id)}
+                  className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-200 hover:border-indigo-400"
+                >
+                  {preset.name}
+                  <span className="ml-1 text-slate-500">{preset.grades.join('–')}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="flex flex-col gap-2">

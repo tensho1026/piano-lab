@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { DifficultySelector } from '../../components/DifficultySelector/DifficultySelector'
 import { GameLayout } from '../../components/GameLayout/GameLayout'
 import { GameResult } from '../../components/GameLayout/GameResult'
@@ -10,6 +10,7 @@ import { useGame } from '../../hooks/useGame'
 import { usePiano } from '../../hooks/usePiano'
 import { useQuestionSelection } from '../../hooks/useQuestionSelection'
 import { intervalLabel } from '../../music/intervals'
+import { explainIntervalGuess, nearbyIntervalName } from '../../music/lessons'
 import { createIntervalQuestion } from '../../music/questions'
 import type { Difficulty } from '../../types/game'
 
@@ -23,7 +24,13 @@ export function IntervalQuiz() {
   const [difficulty, setDifficulty] = useState<Difficulty>('easy')
   const [playMode, setPlayMode] = useState<PlayMode>('melodic')
 
-  const createQuestion = useCallback(() => createIntervalQuestion(difficulty), [difficulty])
+  const followUp = useRef<{ names: string[]; firstNote: string } | undefined>(undefined)
+
+  const createQuestion = useCallback(() => {
+    const pending = followUp.current
+    followUp.current = undefined
+    return createIntervalQuestion(difficulty, pending)
+  }, [difficulty])
   const game = useGame({ createQuestion, resetKey: difficulty })
   const question = game.question
   const [selected, select] = useQuestionSelection<string>(question.id)
@@ -46,7 +53,15 @@ export function IntervalQuiz() {
   const handleSelect = (choice: string) => {
     if (selected !== null) return
     select(choice)
-    game.answer(choice === question.answer)
+    const correct = choice === question.answer
+    if (!correct) {
+      const neighbor = nearbyIntervalName(question.answer)
+      followUp.current = {
+        names: [...new Set([question.answer, choice, neighbor].filter(Boolean) as string[])],
+        firstNote: question.firstNote,
+      }
+    }
+    game.answer(correct)
   }
 
   return (
@@ -137,6 +152,11 @@ export function IntervalQuiz() {
           <QuizFeedback
             result={game.lastResult}
             answerLabel={intervalLabel(question.answer)}
+            lesson={
+              selected && selected !== question.answer
+                ? explainIntervalGuess(question.answer, selected)
+                : null
+            }
             onNext={game.next}
             nextLabel={game.questionNumber === game.totalQuestions ? '結果を見る' : '次の問題'}
           />

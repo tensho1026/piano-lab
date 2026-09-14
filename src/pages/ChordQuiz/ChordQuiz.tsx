@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
-import { DifficultySelector } from '../../components/DifficultySelector/DifficultySelector'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { OptionToggle } from '../../components/PracticeOptions/OptionToggle'
 import { GameLayout } from '../../components/GameLayout/GameLayout'
 import { GameResult } from '../../components/GameLayout/GameResult'
+import { Piano } from '../../components/Piano/Piano'
 import { ChoiceGrid } from '../../components/Quiz/ChoiceGrid'
 import { QuizFeedback } from '../../components/Quiz/QuizFeedback'
 import { ReplayButton } from '../../components/Quiz/ReplayButton'
@@ -9,18 +10,29 @@ import { Score } from '../../components/Score/Score'
 import { useGame } from '../../hooks/useGame'
 import { usePiano } from '../../hooks/usePiano'
 import { useQuestionSelection } from '../../hooks/useQuestionSelection'
-import { chordNotesLabel } from '../../music/chords'
+import { chordNotes, chordNotesLabel, chordRootOf, type ChordQuizScope } from '../../music/chords'
+import { explainChordGuess } from '../../music/lessons'
 import { createChordQuestion } from '../../music/questions'
-import type { Difficulty } from '../../types/game'
+import { isSameNote } from '../../utils/compareNotes'
 
 const CHORD_DURATION = 2.2
 
 export function ChordQuiz() {
   const { audio, status } = usePiano()
-  const [difficulty, setDifficulty] = useState<Difficulty>('easy')
+  const [includeSevenths, setIncludeSevenths] = useState(false)
+  const [sameRootChoices, setSameRootChoices] = useState(true)
+  const scope: ChordQuizScope = useMemo(
+    () => ({ includeSevenths, sameRootChoices }),
+    [includeSevenths, sameRootChoices],
+  )
+  const followUpRoot = useRef<string | undefined>(undefined)
 
-  const createQuestion = useCallback(() => createChordQuestion(difficulty), [difficulty])
-  const game = useGame({ createQuestion, resetKey: difficulty })
+  const createQuestion = useCallback(() => {
+    const root = followUpRoot.current
+    followUpRoot.current = undefined
+    return createChordQuestion(scope, root)
+  }, [scope])
+  const game = useGame({ createQuestion, resetKey: scope })
   const question = game.question
   const [selected, select] = useQuestionSelection<string>(question.id)
 
@@ -37,22 +49,41 @@ export function ChordQuiz() {
   const handleSelect = (choice: string) => {
     if (selected !== null) return
     select(choice)
-    game.answer(choice === question.answer)
+    const correct = choice === question.answer
+    if (!correct) followUpRoot.current = chordRootOf(question.answer)
+    game.answer(correct)
   }
+
+  const guessedNotes = selected ? chordNotes(selected) : []
+  const extraNotes = guessedNotes.filter(
+    (note) => !question.notes.some((candidate) => isSameNote(candidate, note)),
+  )
 
   return (
     <GameLayout
       title="コード当てゲーム"
-      description="再生されたコードのコードネームを 4 択で当てます。"
+      description="再生されたコードのコードネームを当てます。間違えると、同じ根音でもう一度出ます。"
       toolbar={
-        <DifficultySelector
-          value={difficulty}
-          onChange={setDifficulty}
-          hints={{
-            easy: 'ルート C D E F G A B のメジャー / マイナー',
-            normal: 'メジャー / マイナーに 7・maj7・m7 を追加',
-          }}
-        />
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap gap-2">
+            <OptionToggle
+              label="7th を含める"
+              checked={includeSevenths}
+              onChange={setIncludeSevenths}
+            />
+            <OptionToggle
+              label="ルート固定で種類だけ当てる"
+              checked={sameRootChoices}
+              onChange={setSameRootChoices}
+            />
+          </div>
+          <p className="text-xs text-slate-400">
+            {sameRootChoices
+              ? '選択肢は同じ根音のコードだけになります。'
+              : '根音も種類も変わります。'}
+            {includeSevenths ? ' 7・maj7・m7 も出ます。' : ' メジャーとマイナーが中心です。'}
+          </p>
+        </div>
       }
       score={
         game.phase === 'finished' ? null : (
@@ -88,9 +119,24 @@ export function ChordQuiz() {
             onSelect={handleSelect}
           />
 
+          {selected !== null ? (
+            <Piano
+              selectedNotes={guessedNotes}
+              highlightNotes={question.notes}
+              missNotes={extraNotes}
+              disabled
+              keyboardEnabled={false}
+            />
+          ) : null}
+
           <QuizFeedback
             result={game.lastResult}
             answerLabel={`${question.answer}（${chordNotesLabel(question.answer)}）`}
+            lesson={
+              selected && selected !== question.answer
+                ? explainChordGuess(question.answer, selected)
+                : null
+            }
             onNext={game.next}
             nextLabel={game.questionNumber === game.totalQuestions ? '結果を見る' : '次の問題'}
           />

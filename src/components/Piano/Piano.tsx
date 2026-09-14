@@ -11,6 +11,8 @@ export type PianoProps = {
   selectedNotes?: readonly string[]
   /** 正解提示などで強調表示する音。 */
   highlightNotes?: readonly string[]
+  /** 不正解の余分な音。 */
+  missNotes?: readonly string[]
   onNoteOn?: (note: PianoNote) => void
   onNoteOff?: (note: PianoNote) => void
   /** 鍵盤を押したときに自分で発音するか。 */
@@ -32,6 +34,7 @@ export function Piano({
   to = KEYBOARD_HIGHEST,
   selectedNotes = [],
   highlightNotes = [],
+  missNotes = [],
   onNoteOn,
   onNoteOff,
   playSound = true,
@@ -148,6 +151,7 @@ export function Piano({
               const isPressed = pressed.includes(key.note)
               const isSelected = selectedNotes.includes(key.note)
               const isHighlighted = highlightNotes.includes(key.note)
+              const isMiss = missNotes.includes(key.note)
               return (
                 <button
                   key={key.note}
@@ -168,11 +172,13 @@ export function Piano({
                     'relative flex flex-1 items-end justify-center rounded-b-md border border-slate-400/70 pb-2 text-[10px] font-medium transition-colors',
                     isPressed
                       ? 'bg-indigo-300 text-indigo-950'
-                      : isHighlighted
-                        ? 'bg-emerald-200 text-emerald-950'
-                        : isSelected
-                          ? 'bg-indigo-200 text-indigo-950'
-                          : 'bg-white text-slate-400 hover:bg-slate-100',
+                      : isMiss
+                        ? 'bg-rose-300 text-rose-950'
+                        : isHighlighted
+                          ? 'bg-emerald-200 text-emerald-950'
+                          : isSelected
+                            ? 'bg-indigo-200 text-indigo-950'
+                            : 'bg-white text-slate-400 hover:bg-slate-100',
                     disabled ? 'cursor-not-allowed' : 'cursor-pointer',
                   ].join(' ')}
                 >
@@ -195,6 +201,7 @@ export function Piano({
             const isPressed = pressed.includes(key.note)
             const isSelected = selectedNotes.includes(key.note)
             const isHighlighted = highlightNotes.includes(key.note)
+            const isMiss = missNotes.includes(key.note)
             return (
               <button
                 key={key.note}
@@ -219,11 +226,13 @@ export function Piano({
                   'absolute top-0 z-10 flex h-[62%] items-end justify-center rounded-b-md border border-slate-900 pb-1 text-[9px] font-medium transition-colors',
                   isPressed
                     ? 'bg-indigo-500 text-white'
-                    : isHighlighted
-                      ? 'bg-emerald-500 text-white'
-                      : isSelected
-                        ? 'bg-indigo-400 text-white'
-                        : 'bg-slate-900 text-slate-500 hover:bg-slate-800',
+                    : isMiss
+                      ? 'bg-rose-500 text-white'
+                      : isHighlighted
+                        ? 'bg-emerald-500 text-white'
+                        : isSelected
+                          ? 'bg-indigo-400 text-white'
+                          : 'bg-slate-900 text-slate-500 hover:bg-slate-800',
                   disabled ? 'cursor-not-allowed' : 'cursor-pointer',
                 ].join(' ')}
               >
