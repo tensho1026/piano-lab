@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { DifficultySelector } from '../../components/DifficultySelector/DifficultySelector'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { OptionToggle } from '../../components/PracticeOptions/OptionToggle'
 import { GameLayout } from '../../components/GameLayout/GameLayout'
 import { GameResult } from '../../components/GameLayout/GameResult'
 import { Piano } from '../../components/Piano/Piano'
@@ -8,20 +8,25 @@ import { ReplayButton } from '../../components/Quiz/ReplayButton'
 import { Score } from '../../components/Score/Score'
 import { useGame } from '../../hooks/useGame'
 import { usePiano } from '../../hooks/usePiano'
-import { chordEarKindsFor } from '../../music/chords'
+import { DEFAULT_CHORD_EAR_SCOPE, type ChordEarScope } from '../../music/chords'
+import { explainNoteSetGuess } from '../../music/lessons'
 import { createChordEarQuestion } from '../../music/questions'
-import { isSameNoteSet, sortNotes } from '../../utils/compareNotes'
-import type { Difficulty } from '../../types/game'
+import { isSameNote, isSameNoteSet, sortNotes } from '../../utils/compareNotes'
 import type { PianoNote } from '../../types/music'
 
 const CHORD_DURATION = 2.2
 
 export function ChordEar() {
   const { audio, status } = usePiano()
-  const [difficulty, setDifficulty] = useState<Difficulty>('easy')
+  const [scope, setScope] = useState<ChordEarScope>(DEFAULT_CHORD_EAR_SCOPE)
+  const followUpSuffix = useRef<string | undefined>(undefined)
 
-  const createQuestion = useCallback(() => createChordEarQuestion(difficulty), [difficulty])
-  const game = useGame({ createQuestion, resetKey: difficulty })
+  const createQuestion = useCallback(() => {
+    const suffix = followUpSuffix.current
+    followUpSuffix.current = undefined
+    return createChordEarQuestion(scope, suffix)
+  }, [scope])
+  const game = useGame({ createQuestion, resetKey: scope })
   const question = game.question
   const requiredCount = question.notes.length
 
@@ -59,26 +64,58 @@ export function ChordEar() {
 
   const handleSubmit = () => {
     if (game.phase !== 'playing') return
-    game.answer(isSameNoteSet(picked, question.answer))
+    const correct = isSameNoteSet(picked, question.answer)
+    if (!correct) followUpSuffix.current = question.suffix
+    game.answer(correct)
   }
 
   const answered = game.phase === 'answered'
+  const extraNotes = picked.filter(
+    (note) => !question.answer.some((candidate) => isSameNote(candidate, note)),
+  )
+
+  const updateScope = (patch: Partial<ChordEarScope>) => {
+    setScope((current) => {
+      const next = { ...current, ...patch }
+      if (!next.includeTriads && !next.includeSevenths && !next.includeTensions) {
+        return { ...next, includeTriads: true }
+      }
+      return next
+    })
+  }
 
   return (
     <GameLayout
       title="和音耳コピゲーム"
-      description="再生された和音の構成音を、画面のピアノで再現します。押す順番は判定に影響しません。難易度で和音の種類が変わります。"
+      description="再生された和音の構成音をピアノで再現します。出題する和音の種類は下で選べます。"
       toolbar={
-        <DifficultySelector
-          value={difficulty}
-          onChange={setDifficulty}
-          options={['easy', 'normal', 'hard']}
-          hints={{
-            easy: `メジャー / マイナー / パワーコード（${chordEarKindsFor('easy').length} 種類）`,
-            normal: `dim / aug / sus / 6th など（${chordEarKindsFor('normal').length} 種類・転回あり）`,
-            hard: `7th / 9th / テンションなど（${chordEarKindsFor('hard').length} 種類・転回あり）`,
-          }}
-        />
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap gap-2">
+            <OptionToggle
+              label="三和音"
+              checked={scope.includeTriads}
+              onChange={(checked) => updateScope({ includeTriads: checked })}
+            />
+            <OptionToggle
+              label="転回あり"
+              checked={scope.allowInversions}
+              onChange={(checked) => updateScope({ allowInversions: checked })}
+            />
+            <OptionToggle
+              label="7th"
+              checked={scope.includeSevenths}
+              onChange={(checked) => updateScope({ includeSevenths: checked })}
+            />
+            <OptionToggle
+              label="テンション"
+              checked={scope.includeTensions}
+              onChange={(checked) => updateScope({ includeTensions: checked })}
+            />
+          </div>
+          <p className="text-xs text-slate-400">
+            三和音・7th・テンションから出題します。転回を入れると一番下の音が根音とは限りません。
+          </p>
+        </div>
       }
       score={
         game.phase === 'finished' ? null : (
@@ -139,17 +176,21 @@ export function ChordEar() {
             <Piano
               selectedNotes={picked}
               highlightNotes={answered ? question.answer : []}
+              missNotes={answered ? extraNotes : []}
               onNoteOn={toggleNote}
               disabled={answered}
             />
             {answered ? (
-              <p className="text-xs text-slate-400">緑色が正解の音、紫色があなたの回答です。</p>
+              <p className="text-xs text-slate-400">緑色が正解の音、赤色が余分に選んだ音です。</p>
             ) : null}
           </section>
 
           <QuizFeedback
             result={game.lastResult}
             answerLabel={`${question.chordSymbol}（${question.chordKind}） ${question.answer.join(' ')}`}
+            lesson={
+              game.lastResult === 'wrong' ? explainNoteSetGuess(question.answer, picked) : null
+            }
             onNext={game.next}
             nextLabel={game.questionNumber === game.totalQuestions ? '結果を見る' : '次の問題'}
           />

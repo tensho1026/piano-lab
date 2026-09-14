@@ -81,9 +81,73 @@ export function chordEarKindsFor(difficulty: Difficulty): readonly ChordEarKind[
   return CHORD_EAR_KINDS_HARD
 }
 
-export function chordPoolFor(difficulty: Difficulty): string[] {
-  const suffixes = difficulty === 'easy' ? EASY_SUFFIXES : NORMAL_SUFFIXES
-  return CHORD_ROOTS.flatMap((root) => suffixes.map((suffix) => `${root}${suffix}`))
+export type ChordEarScope = {
+  includeTriads: boolean
+  includeSevenths: boolean
+  includeTensions: boolean
+  allowInversions: boolean
+}
+
+export const DEFAULT_CHORD_EAR_SCOPE: ChordEarScope = {
+  includeTriads: true,
+  includeSevenths: false,
+  includeTensions: false,
+  allowInversions: false,
+}
+
+const TRIAD_KINDS: readonly ChordEarKind[] = [
+  { suffix: '5', label: 'パワーコード（根音と5度）' },
+  { suffix: '', label: 'メジャー三和音' },
+  { suffix: 'm', label: 'マイナー三和音' },
+  { suffix: 'dim', label: 'ディミニッシュ（減三和音）' },
+  { suffix: 'aug', label: 'オーギュメント（増三和音）' },
+  { suffix: 'sus2', label: 'サスツー' },
+  { suffix: 'sus4', label: 'サスフォー' },
+]
+
+const SEVENTH_KINDS: readonly ChordEarKind[] = [
+  { suffix: '7', label: 'ドミナントセブンス' },
+  { suffix: 'maj7', label: 'メジャーセブンス' },
+  { suffix: 'm7', label: 'マイナーセブンス' },
+  { suffix: 'm7b5', label: 'ハーフディミニッシュ' },
+  { suffix: 'dim7', label: 'ディミニッシュセブンス' },
+  { suffix: '7sus4', label: 'セブンスサスフォー' },
+  { suffix: 'm/ma7', label: 'マイナーメジャーセブンス' },
+]
+
+const TENSION_KINDS: readonly ChordEarKind[] = [
+  { suffix: '6', label: 'シックス' },
+  { suffix: 'm6', label: 'マイナーシックス' },
+  { suffix: 'add9', label: 'アドナインス' },
+  { suffix: '9', label: 'ナインス' },
+  { suffix: 'm9', label: 'マイナーナインス' },
+  { suffix: 'maj9', label: 'メジャーナインス' },
+  { suffix: '7#5', label: 'セブンス・シャープファイブ' },
+  { suffix: '7b5', label: 'セブンス・フラットファイブ' },
+  { suffix: '7b9', label: 'セブンス・フラットナインス' },
+  { suffix: '7#9', label: 'セブンス・シャープナインス' },
+  { suffix: '11', label: 'イレブンス' },
+]
+
+export function chordEarKindsForScope(scope: ChordEarScope): ChordEarKind[] {
+  const kinds: ChordEarKind[] = []
+  if (scope.includeTriads) kinds.push(...TRIAD_KINDS)
+  if (scope.includeSevenths) kinds.push(...SEVENTH_KINDS)
+  if (scope.includeTensions) kinds.push(...TENSION_KINDS)
+  return kinds
+}
+
+export type ChordQuizScope = {
+  includeSevenths: boolean
+  sameRootChoices: boolean
+}
+
+export function chordPoolFor(scope: ChordQuizScope | Difficulty, root?: string): string[] {
+  const includeSevenths =
+    typeof scope === 'string' ? scope !== 'easy' : scope.includeSevenths
+  const suffixes = includeSevenths ? NORMAL_SUFFIXES : EASY_SUFFIXES
+  const roots = root ? [root] : [...CHORD_ROOTS]
+  return roots.flatMap((candidate) => suffixes.map((suffix) => `${candidate}${suffix}`))
 }
 
 /** コードネームのルート音（例: "Cm7" -> "C"）。 */
@@ -156,16 +220,26 @@ function notesInRange(notes: readonly string[], from: string, to: string): boole
  * 和音耳コピ用に、コード種類・ルート・（必要なら）転回を選んで鳴らす音を作る。
  * 鍵盤の表示範囲に収まるまで loc をずらして試す。
  */
-export function createVoicedChordEar(difficulty: Difficulty, from: string, to: string): {
+export function createVoicedChordEar(
+  scope: ChordEarScope,
+  from: string,
+  to: string,
+  followUpSuffix?: string,
+): {
   symbol: string
   kind: string
   notes: string[]
+  suffix: string
 } {
-  const kinds = chordEarKindsFor(difficulty)
-  const allowInversions = difficulty !== 'easy'
+  const kinds = chordEarKindsForScope(scope)
+  const pool = kinds.length > 0 ? kinds : [...TRIAD_KINDS]
+  const allowInversions = scope.allowInversions
 
   for (let attempt = 0; attempt < 80; attempt += 1) {
-    const kind = pickRandom(kinds)
+    const kind =
+      followUpSuffix && pool.some((item) => item.suffix === followUpSuffix)
+        ? pool.find((item) => item.suffix === followUpSuffix) ?? pickRandom(pool)
+        : pickRandom(pool)
     const root = pickRandom(CHORD_EAR_ROOTS)
     const symbol = `${root}${kind.suffix}`
     const chord = Chord.get(symbol)
@@ -178,9 +252,9 @@ export function createVoicedChordEar(difficulty: Difficulty, from: string, to: s
     if (!notesInRange(notes, from, to)) continue
 
     const inversionLabel = inversion === 0 ? '' : `（第${inversion}転回）`
-    return { symbol, kind: `${kind.label}${inversionLabel}`, notes }
+    return { symbol, kind: `${kind.label}${inversionLabel}`, notes, suffix: kind.suffix }
   }
 
   const fallback = voiceChord(Chord.get('C').notes, 4)
-  return { symbol: 'C', kind: 'メジャー三和音', notes: fallback }
+  return { symbol: 'C', kind: 'メジャー三和音', notes: fallback, suffix: '' }
 }

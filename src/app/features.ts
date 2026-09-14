@@ -6,7 +6,7 @@ export type Feature = {
   icon: string
 }
 
-/** ホーム画面に並べる 6 機能。 */
+/** ホーム画面に並べる機能。 */
 export const FEATURES: readonly Feature[] = [
   {
     path: '/sight-reading',
@@ -33,6 +33,12 @@ export const FEATURES: readonly Feature[] = [
     icon: '👂',
   },
   {
+    path: '/relative-pitch',
+    title: '相対音感',
+    description: '調の中での度数を当てる',
+    icon: '🎯',
+  },
+  {
     path: '/chord-ear',
     title: '和音耳コピ',
     description: '聴いた和音を再現',
@@ -43,5 +49,11 @@ export const FEATURES: readonly Feature[] = [
     title: 'コード進行',
     description: 'コードを組み合わせる',
     icon: '🎛️',
+  },
+  {
+    path: '/progression-ear',
+    title: '進行耳コピ',
+    description: '進行をディグリーで当てる',
+    icon: '🔁',
   },
 ]
