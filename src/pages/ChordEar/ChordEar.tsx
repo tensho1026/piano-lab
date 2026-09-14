@@ -8,7 +8,8 @@ import { ReplayButton } from '../../components/Quiz/ReplayButton'
 import { Score } from '../../components/Score/Score'
 import { useGame } from '../../hooks/useGame'
 import { usePiano } from '../../hooks/usePiano'
-import { CHORD_EAR_SETTINGS, createChordEarQuestion } from '../../music/questions'
+import { chordEarKindsFor } from '../../music/chords'
+import { createChordEarQuestion } from '../../music/questions'
 import { isSameNoteSet, sortNotes } from '../../utils/compareNotes'
 import type { Difficulty } from '../../types/game'
 import type { PianoNote } from '../../types/music'
@@ -22,7 +23,7 @@ export function ChordEar() {
   const createQuestion = useCallback(() => createChordEarQuestion(difficulty), [difficulty])
   const game = useGame({ createQuestion, resetKey: difficulty })
   const question = game.question
-  const requiredCount = CHORD_EAR_SETTINGS[difficulty].noteCount
+  const requiredCount = question.notes.length
 
   const [pick, setPick] = useState<{ questionId: string; notes: string[] }>({
     questionId: question.id,
@@ -66,16 +67,16 @@ export function ChordEar() {
   return (
     <GameLayout
       title="和音耳コピゲーム"
-      description="再生された複数の音を、画面のピアノで再現します。押す順番は判定に影響しません。"
+      description="再生された和音の構成音を、画面のピアノで再現します。押す順番は判定に影響しません。難易度で和音の種類が変わります。"
       toolbar={
         <DifficultySelector
           value={difficulty}
           onChange={setDifficulty}
           options={['easy', 'normal', 'hard']}
           hints={{
-            easy: '2 音（白鍵・C4〜C5）',
-            normal: '3 音（白鍵・C4〜C6）',
-            hard: '4 音（黒鍵を含む・C3〜C6）',
+            easy: `メジャー / マイナー / パワーコード（${chordEarKindsFor('easy').length} 種類）`,
+            normal: `dim / aug / sus / 6th など（${chordEarKindsFor('normal').length} 種類・転回あり）`,
+            hard: `7th / 9th / テンションなど（${chordEarKindsFor('hard').length} 種類・転回あり）`,
           }}
         />
       }
@@ -148,7 +149,7 @@ export function ChordEar() {
 
           <QuizFeedback
             result={game.lastResult}
-            answerLabel={question.answer.join(' ')}
+            answerLabel={`${question.chordSymbol}（${question.chordKind}） ${question.answer.join(' ')}`}
             onNext={game.next}
             nextLabel={game.questionNumber === game.totalQuestions ? '結果を見る' : '次の問題'}
           />
